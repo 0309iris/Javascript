@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>colorGame</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .page-set {
+            background-color: #32023d;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn {
+            background-color: #f628ef;
+            padding: .5rem 1rem;
+            color: #403D39;
+            border: none;
+            border-radius: 10px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background-color: #403D39;
+            color: #FFFCF2;
+        }
+
+        .title {
+            font-size: 45px;
+            margin: 1rem;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 10px;
+            gap: 10px;
+            /* 間距 */
+        }
+
+        .controls p {
+            margin: 0;
+        }
+
+        .box-big {
+            background-color: #FFFCF2;
+            width: 500px;
+            height: 500px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .box {
+            width: 100%;
+            height: 100%;
+            border: 5px solid white;
+            border-radius: 10px;
+        }
+
+        .hide {
+            display: none;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            /* 間距 */
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="home-page page-set">
+        <p class="title">色弱遊戲</p>
+        <p>請找出顏色不同的色塊</p>
+        <button type="button" class="btn start">開始</button>
+    </div>
+    <div class="pause-page page-set hide">
+        <p>開始了就沒有暫停這件事，3秒後繼續遊戲</p>
+        <button type="button" class="btn plea">拜託</button>
+    </div>
+    <div class="plea-page page-set hide">
+        <p>就說不能暫停咩 (3秒後即將繼續遊戲)</p>
+    </div>
+    <div class="over-page page-set hide">
+        <p>遊戲結束，你的分數是<span class="final-score"></span>分!</p>
+        <div class="btn-group">
+            <button type="button" class="btn restart">再一次</button>
+            <button type="button" class="btn to-home">首頁</button>
+        </div>
+    </div>
+    <div class="game-page page-set hide">
+        <div class="controls">
+            <p class="timer-group">剩餘時間：<span class="timer"></span></p>
+            <p>得分：<span class="score"></span></p>
+            <button type="button" class="btn pause">暫停</button>
+        </div>
+        <div class="box-big">
+        </div>
+    </div>
+    <script>
+        let roundTimer;
+        let roundTime = 10; // 每輪的遊戲倒數時間
+        let scoreCount;
+        let passCount;
+        let level;
+        const homePage = document.querySelector('.home-page');
+        const pausePage = document.querySelector('.pause-page');
+        const pleaPage = document.querySelector('.plea-page');
+        const overPage = document.querySelector('.over-page');
+        const gamePage = document.querySelector('.game-page');
+        const startBtn = document.querySelector('.start');
+        const pauseBtn = document.querySelector('.pause');
+        const pleaBtn = document.querySelector('.plea');
+        const restartBtn = document.querySelector('.restart');
+        const homeBtn = document.querySelector('.to-home');
+        const timerText = document.querySelector('.timer');
+        const scoreText = document.querySelector('.score');
+        const fScoreText = document.querySelector('.final-score');
+
+        function startRoundTimer() {
+            clearInterval(roundTimer);
+            roundTime = 10; // 重置10秒
+            timerText.textContent = roundTime;
+
+            roundTimer = setInterval(() => {
+                roundTime--;
+                timerText.textContent = roundTime;
+
+                if (roundTime < 6) {
+                    timerText.classList.add('five-sec');
+                } else {
+                    timerText.classList.remove('five-sec');
+                }
+
+                if (roundTime < 0) {
+                    clearInterval(roundTimer);
+                    fScoreText.textContent = `${scoreCount}`;
+                    gameOver();
+                }
+            }, 1000);
+        }
+        function runGame() {
+            const boxBig = document.querySelector('.box-big');
+            boxBig.innerHTML = ''; // 清空之前的色塊
+
+            // 生成新色塊
+            for (let i = 0; i < level ** 2; i++) {
+                boxBig.innerHTML += `<div class="box"></div>`;
+            }
+
+            const boxAll = document.querySelectorAll('.box');
+            let color = `rgb(${getColor(1, 255)},${getColor(1, 255)},${getColor(1, 255)})`;
+
+            // 色塊顏色
+            for (let i = 0; i < level ** 2; i++) {
+                let boxs = boxAll[i];
+                let size = 100 / level;
+                boxs.style.width = `${size}%`;
+                boxs.style.height = `${size}%`;
+                boxs.style.backgroundColor = color;
+            }
+
+            // 不一樣的色塊
+            let answerIndex = Math.floor(Math.random() * (level ** 2));
+            let answerBox = boxAll[answerIndex];
+            answerBox.style.opacity = `${0.7 + level * 0.005 + passCount * 0.001}`;
+
+            answerBox.addEventListener('click', function () {
+                scoreCount++;
+                scoreText.textContent = `${scoreCount}`;
+                passCount++;
+
+                // 升等
+                if (passCount === level) {
+                    level++;
+                    passCount = 0;
+                }
+
+                // 新的一輪
+                runGame(); // 重新生成色塊
+            });
+
+            startRoundTimer(); // 重新倒數
+        }
+
+        function showHome() {
+            homePage.classList.remove('hide');
+            pausePage.classList.add('hide');
+            pleaPage.classList.add('hide');
+            overPage.classList.add('hide');
+            gamePage.classList.add('hide');
+            clearInterval(roundTimer);
+        }
+
+        function gameStart() {
+            homePage.classList.add('hide');
+            pausePage.classList.add('hide');
+            pleaPage.classList.add('hide');
+            overPage.classList.add('hide');
+            gamePage.classList.remove('hide');
+            scoreCount = 0;
+            scoreText.textContent = `${scoreCount}`;
+            passCount = 0;
+            level = 2;
+            runGame();
+        }
+
+        function gameOver() {
+            homePage.classList.add('hide');
+            pausePage.classList.add('hide');
+            pleaPage.classList.add('hide');
+            overPage.classList.remove('hide');
+            gamePage.classList.add('hide');
+            clearInterval(roundTimer);
+        }
+
+        function continueGame() {
+            homePage.classList.add('hide');
+            pausePage.classList.add('hide');
+            pleaPage.classList.add('hide');
+            overPage.classList.add('hide');
+            gamePage.classList.remove('hide');
+            startRoundTimer(); // 重新設定時間
+        }
+
+        function getColor(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        startBtn.addEventListener('click', () => {
+            gameStart();
+        });
+        pauseBtn.addEventListener('click', () => {
+            homePage.classList.add('hide');
+            pausePage.classList.add('hide');
+            pleaPage.classList.remove('hide');
+            overPage.classList.add('hide');
+            gamePage.classList.add('hide');
+            clearInterval(roundTimer);
+
+            setTimeout(() => {
+                continueGame(); // 3秒後繼續遊戲
+            }, 3000);
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            homePage.classList.add('hide');
+            pausePage.classList.remove('hide');
+            overPage.classList.add('hide');
+            gamePage.classList.add('hide');
+            clearInterval(roundTimer);
+        });
+
+        pleaBtn.addEventListener('click', () => {
+            pausePage.classList.add('hide');
+            pleaPage.classList.remove('hide');
+            setTimeout(() => {
+                continueGame(); // 3秒後開始遊戲
+            }, 3000);
+        });
+
+        restartBtn.addEventListener('click', () => {
+            gameStart();
+        });
+
+        homeBtn.addEventListener('click', () => {
+            showHome();
+        });
+    </script>
+</body>
+
+</html>
